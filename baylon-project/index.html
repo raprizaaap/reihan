@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pesawat dengan Kontrol WASD + Naik Turun</title>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="renderCanvas"></canvas>
+
+    <script>
+      const canvas = document.getElementById("renderCanvas");
+      const engine = new BABYLON.Engine(canvas, true);
+
+      const createScene = () => {
+        const scene = new BABYLON.Scene(engine);
+        scene.clearColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+
+        // Kamera
+        const camera = new BABYLON.ArcRotateCamera(
+          "camera",
+          Math.PI / 2,
+          Math.PI / 2.5,
+          15,
+          BABYLON.Vector3.Zero(),
+          scene
+        );
+        camera.attachControl(canvas, true);
+
+        // Plane (ground)
+        const ground = BABYLON.MeshBuilder.CreateGround(
+          "ground",
+          { width: 20, height: 20 },
+          scene
+        );
+        const groundMaterial = new BABYLON.StandardMaterial("groundMat", scene);
+        groundMaterial.diffuseColor = new BABYLON.Color3(0, 0.5, 0);
+        ground.material = groundMaterial;
+        ground.receiveShadows = true;
+
+        // Cahaya
+        const hemiLight = new BABYLON.HemisphericLight(
+          "hemiLight",
+          new BABYLON.Vector3(0, 1, 0),
+          scene
+        );
+        hemiLight.intensity = 0.5;
+
+        const dirLight = new BABYLON.DirectionalLight(
+          "dirLight",
+          new BABYLON.Vector3(-1, -2, -1),
+          scene
+        );
+        dirLight.position = new BABYLON.Vector3(5, 10, 5);
+        dirLight.intensity = 2.0;
+
+        const shadowGenerator = new BABYLON.ShadowGenerator(2048, dirLight);
+        shadowGenerator.useBlurExponentialShadowMap = true;
+        shadowGenerator.blurKernel = 32;
+        shadowGenerator.depthScale = 100;
+        shadowGenerator.darkness = 0.3;
+
+        // Load model pesawat
+        BABYLON.SceneLoader.Append("models/", "F-14.glb", scene, (scene) => {
+          let model = null;
+
+          scene.meshes.forEach((mesh) => {
+            if (mesh.name !== "ground") {
+              mesh.scaling = new BABYLON.Vector3(0.7, 0.7, 0.7);
+              mesh.position.y = 1;
+              mesh.rotation = new BABYLON.Vector3(0, Math.PI, 0);
+
+              const pbr = new BABYLON.PBRMaterial("pbr", scene);
+              pbr.metallic = 0.5;
+              pbr.roughness = 0.4;
+              pbr.albedoColor = new BABYLON.Color3(0.8, 0.8, 0.8);
+              mesh.material = pbr;
+
+              mesh.receiveShadows = true;
+              mesh.castShadow = true;
+              shadowGenerator.addShadowCaster(mesh);
+
+              model = mesh;
+            }
+          });
+
+          // Parent untuk gerakan agar model tetap utuh
+          const planeParent = new BABYLON.TransformNode("planeParent", scene);
+          model.parent = planeParent;
+
+          // Keyboard input map
+          const inputMap = {};
+          scene.actionManager = new BABYLON.ActionManager(scene);
+
+          scene.actionManager.registerAction(
+            new BABYLON.ExecuteCodeAction(
+              BABYLON.ActionManager.OnKeyDownTrigger,
+              (evt) => (inputMap[evt.sourceEvent.key.toLowerCase()] = true)
+            )
+          );
+          scene.actionManager.registerAction(
+            new BABYLON.ExecuteCodeAction(
+              BABYLON.ActionManager.OnKeyUpTrigger,
+              (evt) => (inputMap[evt.sourceEvent.key.toLowerCase()] = false)
+            )
+          );
+
+          // Update posisi tiap frame
+          scene.onBeforeRenderObservable.add(() => {
+            const speed = 0.05; // kecepatan lebih lambat
+            if (inputMap["s"]) planeParent.position.z += speed;
+            if (inputMap["w"]) planeParent.position.z -= speed;
+            if (inputMap["d"]) planeParent.position.x -= speed;
+            if (inputMap["a"]) planeParent.position.x += speed;
+
+            // Naik turun (space naik, shift turun)
+            if (inputMap[" "]) planeParent.position.y += speed;
+            if (inputMap["shift"]) planeParent.position.y -= speed;
+          });
+        });
+
+        return scene;
+      };
+
+      const scene = createScene();
+
+      engine.runRenderLoop(() => {
+        scene.render();
+      });
+
+      window.addEventListener("resize", () => {
+        engine.resize();
+      });
+    </script>
+  </body>
+</html>
