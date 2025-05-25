@@ -22,6 +22,7 @@
       }
     </style>
   </head>
+  <!-- ... bagian head dan style tetap sama ... -->
   <body>
     <canvas id="renderCanvas"></canvas>
 
@@ -51,7 +52,8 @@
           scene
         );
         const groundMaterial = new BABYLON.StandardMaterial("groundMat", scene);
-        groundMaterial.diffuseColor = new BABYLON.Color3(0, 0.5, 0);
+        // Ganti warna plane agar cocok dengan warna pesawat abu-abu terang
+        groundMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.25);
         ground.material = groundMaterial;
         ground.receiveShadows = true;
 
@@ -124,7 +126,7 @@
 
           // Update posisi tiap frame
           scene.onBeforeRenderObservable.add(() => {
-            const speed = 0.05; // kecepatan lebih lambat
+            const speed = 0.05; // kecepatan
             if (inputMap["s"]) planeParent.position.z += speed;
             if (inputMap["w"]) planeParent.position.z -= speed;
             if (inputMap["d"]) planeParent.position.x -= speed;
